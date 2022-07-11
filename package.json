@@ -16,7 +16,8 @@
     "start": "nwb serve-react-demo"
   },
   "dependencies": {
-    "classnames": "^2.2.5"
+    "classnames": "^2.2.5",
+    "react-cl-audio-player": "^2.3.0"
   },
   "peerDependencies": {
     "prop-types": "^15.6.1",
