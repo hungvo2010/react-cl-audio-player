@@ -1,10 +1,11 @@
 import React, { PureComponent } from 'react';
 import PropTypes from 'prop-types';
 import classnames from 'classnames';
-import './AudioPlayer.css';
-import * as ParserUtil from './parserUtil.js';
-import * as FetchUtil from './fetchUtil.js';
-import * as DecryptUtil from './decryptUtil.js';
+import './style/AudioPlayer.css';
+import ParserUtil from './util/parserUtil.js';
+import FetchUtil from './util/fetchUtil.js';
+import DecryptUtil from './util/decryptUtil.js';
+import HashUtil from './util/hashUtil';
 
 class AudioPlayer extends PureComponent {
   userId = 1;
@@ -48,24 +49,24 @@ class AudioPlayer extends PureComponent {
     this.audio = document.createElement('audio');
     this.audio.src = this.getDecryptedMediaUrl(this.state.active.mediaId, this.userId);
     this.audio.autoplay = !!this.state.autoplay;
+    // this.audio.autoplay = false;
 
     this.audio.addEventListener('timeupdate', e => {
       this.updateProgress();
-
       props.onTimeUpdate(e);
     });
+
     this.audio.addEventListener('ended', e => {
       if (this.state.songs.length > 1 || this.state.repeat) {
         this.next();
       } else {
         this.setState({ playing: false, progress: 0 });
       }
-
       props.onEnded(e);
     });
+
     this.audio.addEventListener('error', e => {
       this.next();
-
       props.onError(e);
     });
   }
@@ -85,16 +86,27 @@ class AudioPlayer extends PureComponent {
 
   getDecryptedMediaUrl = async (mediaId, userId) => {
     const bytesBuffer = await FetchUtil.fetchBytesOfStaticMedia(mediaId);
+    // console.log("Bytebuffer: ", mediaId, bytesBuffer);
     const wrmHeader = ParserUtil.getWRMHeaderFromBuffer(bytesBuffer, 0, ParserUtil.WRMHEADER_BYTES_SIZE);
+    // console.log("WRMHeader: ", wrmHeader);
     const keyId = ParserUtil.getKeyIdFromWRMHeader(wrmHeader);
+    // console.log("KeyId", keyId);
     const laUrl = ParserUtil.getLaUrlFromWRMHeader(wrmHeader);
-    const encryptedContent = ParserUtil.getEncryptedContentFromBuffer(bytesBuffer, ParserUtil.WRMHEADER_BYTES_SIZE + 1, bytesBuffer.length);
+    // console.log("LaUrl", laUrl);
+    const encryptedContent = ParserUtil.getEncryptedContentFromBuffer(bytesBuffer, ParserUtil.WRMHEADER_BYTES_SIZE, bytesBuffer.length);
+    // console.log("EncryptedContent", encryptedContent);
     const usageLicense = await FetchUtil.fetchUsageLicense(laUrl, userId, keyId);
-    if (usageLicense.data && usageLicense.data.item && usageLicense.data.item && usageLicense.data.item.contentKey) {
+    // console.log("UsageLicense", usageLicense);
+    if (usageLicense.data && usageLicense.data.item) {
       const contentKey = usageLicense.data.item.contentKey;
-      const rawContentBytes = DecryptUtil.decryptMediaContent(encryptedContent, contentKey);
-      const mediaBlob = new Blob([rawContentBytes], {type: "audio/mpeg"});
-      return window.URL.createObjectURL(mediaBlob);
+      const sha256HashContentKey = await HashUtil.sha256HashContentKey(contentKey);
+      // console.log("sha256", sha256HashContentKey);
+      const rawContentBytes = await DecryptUtil.decryptMediaContent(encryptedContent, sha256HashContentKey);
+      // console.log("mediaId", mediaId, rawContentBytes);
+      const mediaBlob = new Blob([rawContentBytes], { type: "audio/mpeg" });
+      const blobUrl = window.URL.createObjectURL(mediaBlob);
+      console.log("blobUrl", blobUrl);
+      return blobUrl;
     }
     else {
       return "";

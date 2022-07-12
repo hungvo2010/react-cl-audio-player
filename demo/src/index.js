@@ -70,7 +70,7 @@ import AudioPlayer from '../../src';
 
 const songs = [
   {
-    mediaId: 76,
+    mediaId: 89,
     cover:
       'http://www.tenhomaisdiscosqueamigos.com/wp-content/uploads/2015/06/daft-punk.jpg',
     artist: {
@@ -79,7 +79,7 @@ const songs = [
     },
   },
   {
-    mediaId: 77,
+    mediaId: 90,
     cover:
       'http://www.tenhomaisdiscosqueamigos.com/wp-content/uploads/2015/06/daft-punk.jpg',
     artist: {
@@ -88,7 +88,7 @@ const songs = [
     },
   },
   {
-    mediaId: 78,
+    mediaId: 91,
     cover:
       'http://www.tenhomaisdiscosqueamigos.com/wp-content/uploads/2015/06/daft-punk.jpg',
     artist: {
@@ -97,7 +97,7 @@ const songs = [
     },
   },
   {
-    mediaId: 79,
+    mediaId: 92,
     cover:
       'http://www.tenhomaisdiscosqueamigos.com/wp-content/uploads/2015/06/daft-punk.jpg',
     artist: {
