@@ -8,7 +8,7 @@ import DecryptUtil from './util/decryptUtil.js';
 import HashUtil from './util/hashUtil';
 
 class AudioPlayer extends PureComponent {
-  userId = 1;
+  userId = 2;
   userAlreadyInteract = false;
 
   static propTypes = {
@@ -51,6 +51,7 @@ class AudioPlayer extends PureComponent {
     this.chorus = {};
     this.audio = document.createElement('audio');
     this.audio.src = -1;
+    this.audio.preload = "auto";
 
     this.audio.addEventListener('timeupdate', e => {
       this.updateProgress();
@@ -67,8 +68,13 @@ class AudioPlayer extends PureComponent {
     });
 
     this.audio.addEventListener('error', e => {
-      this.next();
-      props.onError(e);
+      if (this.audio.src === window.location.href) {
+        this.pause();
+      }
+      else {
+        this.next();
+        props.onError(e);
+      }
     });
 
     document.addEventListener('mousemove', event => {
@@ -126,6 +132,10 @@ class AudioPlayer extends PureComponent {
   };
 
   play = () => {
+    if (this.audio.src === window.location.href) {
+      this.pause();
+      return;
+    }
     this.setState({
       playing: true,
     });
@@ -162,8 +172,11 @@ class AudioPlayer extends PureComponent {
       repeat: false,
     });
 
-    this.audio.src = await this.getDecryptedMediaUrl(active.mediaId, this.userId);
-    if (this.userAlreadyInteract){
+    const decryptedMediaUrl = await this.getDecryptedMediaUrl(active.mediaId, this.userId);
+    if (decryptedMediaUrl !== ""){
+      this.audio.src = decryptedMediaUrl + "#t=" + this.chorus.startChorus / 1000 + "," + this.chorus.endChorus / 1000;
+    }
+    if (this.userAlreadyInteract) {
       this.play();
     }
     this.props.onNext();
@@ -172,7 +185,7 @@ class AudioPlayer extends PureComponent {
   previous = async () => {
     const { current, songs } = this.state;
     const total = songs.length;
-    const newSongToPlay = current > 0 ? current - 1 : total - 1;
+    const newSongToPlay = current > 1 ? current - 1 : total - 1;
     const active = songs[newSongToPlay];
 
     this.setState({
@@ -181,14 +194,18 @@ class AudioPlayer extends PureComponent {
       progress: 0,
     });
 
-    this.audio.src = await this.getDecryptedMediaUrl(active.mediaId, this.userId);
+    const decryptedMediaUrl = await this.getDecryptedMediaUrl(active.mediaId, this.userId);
+    if (decryptedMediaUrl !== ""){
+      this.audio.src = decryptedMediaUrl + "#t=" + this.chorus.startChorus / 1000 + "," + this.chorus.endChorus / 1000;
+    }
     this.play();
+
     this.props.onPrevious();
   };
 
   randomize = () => {
     const { random, songs } = this.state;
-    const shuffled = this.shuffle(songs.slice());
+    const shuffled = this.shuffle(songs.slice(1, songs.length));
 
     this.setState({
       songs: !random ? shuffled : songs,
