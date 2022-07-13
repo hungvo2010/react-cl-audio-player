@@ -129,12 +129,7 @@ class AudioPlayer extends PureComponent {
     this.setState({
       playing: true,
     });
-    // console.log("src:", this.audio.src);
-    // if (this.audio.src === "") {
-    //   return;
-    // }
     this.audio.play();
-    // console.log("already play");
     this.props.onPlay();
   };
 
@@ -333,35 +328,23 @@ class AudioPlayer extends PureComponent {
 
   getDecryptedMediaUrl = async (mediaId, userId) => {
     const bytesBuffer = await FetchUtil.fetchBytesOfStaticMedia(mediaId);
-    // console.log("Bytebuffer: ", mediaId, bytesBuffer);
     const wrmHeader = ParserUtil.getWRMHeaderFromBuffer(bytesBuffer, 0, ParserUtil.WRMHEADER_BYTES_SIZE);
-    // console.log("WRMHeader: ", wrmHeader);
     const keyId = ParserUtil.getKeyIdFromWRMHeader(wrmHeader);
-    // console.log("KeyId", keyId);
     const laUrl = ParserUtil.getLaUrlFromWRMHeader(wrmHeader);
-    // console.log("LaUrl", laUrl);
     const encryptedContent = ParserUtil.getEncryptedContentFromBuffer(bytesBuffer, ParserUtil.WRMHEADER_BYTES_SIZE, bytesBuffer.length);
-    // console.log("EncryptedContent", encryptedContent);
     const usageLicense = await FetchUtil.fetchUsageLicense(laUrl, userId, keyId);
-    // console.log("UsageLicense", usageLicense);
     if (usageLicense.data && usageLicense.data.item) {
       this.bindingUsageLicense(usageLicense.data.item);
       this.bindingMediaChorus(usageLicense.data.item);
-      // console.log(this.usageLicense);
       const contentKey = usageLicense.data.item.contentKey;
-      // console.log("ContentKey", contentKey);
       if (!contentKey) {
         return "";
       }
       // Hash content key
       const sha256HashContentKey = await HashUtil.sha256HashContentKey(contentKey);
-      // console.log("sha256", sha256HashContentKey);
       const rawContentBytes = await DecryptUtil.decryptMediaContent(encryptedContent, sha256HashContentKey);
-      // console.log("mediaId", mediaId, rawContentBytes);
       const mediaBlob = new Blob([rawContentBytes], { type: "audio/mpeg" });
       const blobUrl = window.URL.createObjectURL(mediaBlob);
-
-      // console.log("blobUrl", blobUrl);
       return blobUrl;
     }
     else {
