@@ -3,10 +3,11 @@ export default class FetchUtil {
 
     static async fetchLocationOfStaticMedia(mediaId) {
         const targetUrl = this.ZDRM_API_REQUEST_MEDIA_HOST + '?mediaId=' + mediaId;
+        console.log("targetUrl", targetUrl);
         let fetchResp = await fetch(targetUrl);
         const respData = await fetchResp.json();
-        if (respData && respData.data && respData.data.value) {
-            // console.log(respData.data.value);
+        console.log("respData", respData);
+        if (respData && respData.data) {
             return respData.data.value;
         }
         return "";
@@ -14,7 +15,7 @@ export default class FetchUtil {
 
     static async fetchBytesOfStaticMedia(mediaId) {
         const targetUrl = await this.fetchLocationOfStaticMedia(mediaId);
-        // console.log(targetUrl);
+        // console.log("targetUrl", targetUrl);
         let fetchResp = await fetch("http://" + targetUrl);
         const bytesBuffer = await fetchResp.arrayBuffer();
         return bytesBuffer;

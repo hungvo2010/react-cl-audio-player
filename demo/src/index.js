@@ -70,12 +70,21 @@ import AudioPlayer from '../../src';
 
 const songs = [
   {
+    mediaId: -1,
+    cover:
+      'http://www.tenhomaisdiscosqueamigos.com/wp-content/uploads/2015/06/daft-punk.jpg',
+    artist: {
+      name: 'Juky San',
+      song: 'Phải chăng em đã yêu',
+    },
+  },
+  {
     mediaId: 89,
     cover:
       'http://www.tenhomaisdiscosqueamigos.com/wp-content/uploads/2015/06/daft-punk.jpg',
     artist: {
-      name: 'Daft Punk',
-      song: 'Get Lucky',
+      name: 'Juky San',
+      song: 'Phải chăng em đã yêu',
     },
   },
   {
@@ -83,8 +92,8 @@ const songs = [
     cover:
       'http://www.tenhomaisdiscosqueamigos.com/wp-content/uploads/2015/06/daft-punk.jpg',
     artist: {
-      name: 'Daft Punk',
-      song: 'Get Lucky',
+      name: 'Thùy Chi',
+      song: 'Tình yêu chậm trễ',
     },
   },
   {
@@ -92,8 +101,8 @@ const songs = [
     cover:
       'http://www.tenhomaisdiscosqueamigos.com/wp-content/uploads/2015/06/daft-punk.jpg',
     artist: {
-      name: 'Daft Punk',
-      song: 'Get Lucky',
+      name: 'Miu Lê',
+      song: 'Vì mẹ anh bắt chia tay',
     },
   },
   {
@@ -101,8 +110,8 @@ const songs = [
     cover:
       'http://www.tenhomaisdiscosqueamigos.com/wp-content/uploads/2015/06/daft-punk.jpg',
     artist: {
-      name: 'Daft Punk',
-      song: 'Get Lucky',
+      name: 'Monstar',
+      song: 'Có hẹn với thanh xuân',
     },
   },
 ];
@@ -121,7 +130,7 @@ ReactDOM.render(
 
     <h1>CLAudioPlayer</h1>
     <h2>
-      <a href="https://github.com/cezarlz/react-cl-audio-player">
+      <a href="https://github.com/hungvo2010/react-cl-audio-player">
         View project on GitHub
       </a>
     </h2>

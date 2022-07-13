@@ -1,6 +1,6 @@
-import React, { PureComponent } from 'react';
+import React, { PureComponent, useDebugValue } from 'react';
 import PropTypes from 'prop-types';
-import classnames from 'classnames';
+import classNames from 'classnames';
 import './style/AudioPlayer.css';
 import ParserUtil from './util/parserUtil.js';
 import FetchUtil from './util/fetchUtil.js';
@@ -9,6 +9,7 @@ import HashUtil from './util/hashUtil';
 
 class AudioPlayer extends PureComponent {
   userId = 1;
+  userAlreadyInteract = false;
 
   static propTypes = {
     songs: PropTypes.array.isRequired,
@@ -46,10 +47,10 @@ class AudioPlayer extends PureComponent {
       mute: false,
     };
 
+    this.usageLicense = {};
+    this.chorus = {};
     this.audio = document.createElement('audio');
-    this.audio.src = this.getDecryptedMediaUrl(this.state.active.mediaId, this.userId);
-    this.audio.autoplay = !!this.state.autoplay;
-    // this.audio.autoplay = false;
+    this.audio.src = -1;
 
     this.audio.addEventListener('timeupdate', e => {
       this.updateProgress();
@@ -69,6 +70,10 @@ class AudioPlayer extends PureComponent {
       this.next();
       props.onError(e);
     });
+
+    document.addEventListener('mousemove', event => {
+      this.userAlreadyInteract = true;
+    })
   }
 
   componentWillReceiveProps(nextProps) {
@@ -84,35 +89,6 @@ class AudioPlayer extends PureComponent {
     });
   }
 
-  getDecryptedMediaUrl = async (mediaId, userId) => {
-    const bytesBuffer = await FetchUtil.fetchBytesOfStaticMedia(mediaId);
-    // console.log("Bytebuffer: ", mediaId, bytesBuffer);
-    const wrmHeader = ParserUtil.getWRMHeaderFromBuffer(bytesBuffer, 0, ParserUtil.WRMHEADER_BYTES_SIZE);
-    // console.log("WRMHeader: ", wrmHeader);
-    const keyId = ParserUtil.getKeyIdFromWRMHeader(wrmHeader);
-    // console.log("KeyId", keyId);
-    const laUrl = ParserUtil.getLaUrlFromWRMHeader(wrmHeader);
-    // console.log("LaUrl", laUrl);
-    const encryptedContent = ParserUtil.getEncryptedContentFromBuffer(bytesBuffer, ParserUtil.WRMHEADER_BYTES_SIZE, bytesBuffer.length);
-    // console.log("EncryptedContent", encryptedContent);
-    const usageLicense = await FetchUtil.fetchUsageLicense(laUrl, userId, keyId);
-    // console.log("UsageLicense", usageLicense);
-    if (usageLicense.data && usageLicense.data.item) {
-      const contentKey = usageLicense.data.item.contentKey;
-      const sha256HashContentKey = await HashUtil.sha256HashContentKey(contentKey);
-      // console.log("sha256", sha256HashContentKey);
-      const rawContentBytes = await DecryptUtil.decryptMediaContent(encryptedContent, sha256HashContentKey);
-      // console.log("mediaId", mediaId, rawContentBytes);
-      const mediaBlob = new Blob([rawContentBytes], { type: "audio/mpeg" });
-      const blobUrl = window.URL.createObjectURL(mediaBlob);
-      console.log("blobUrl", blobUrl);
-      return blobUrl;
-    }
-    else {
-      return "";
-    }
-  }
-
   shuffle = arr => arr.sort(() => Math.random() - 0.5);
 
   updateProgress = () => {
@@ -125,6 +101,9 @@ class AudioPlayer extends PureComponent {
   };
 
   setProgress = e => {
+    if (this.usageLicense.canSeek === false) {
+      return;
+    }
     const target =
       e.target.nodeName === 'SPAN' ? e.target.parentNode : e.target;
     const width = target.clientWidth;
@@ -132,6 +111,9 @@ class AudioPlayer extends PureComponent {
     const offsetX = e.clientX - rect.left;
     const duration = this.audio.duration;
     const currentTime = (duration * offsetX) / width;
+    if (this.usageLicense.listenChorusOnly === true && (currentTime * 1000 < this.chorus.startChorus || currentTime * 1000 > this.chorus.endChorus)) {
+      return;
+    }
     const progress = (currentTime * 100) / duration;
 
     this.audio.currentTime = currentTime;
@@ -147,9 +129,12 @@ class AudioPlayer extends PureComponent {
     this.setState({
       playing: true,
     });
-
+    // console.log("src:", this.audio.src);
+    // if (this.audio.src === "") {
+    //   return;
+    // }
     this.audio.play();
-
+    // console.log("already play");
     this.props.onPlay();
   };
 
@@ -165,14 +150,14 @@ class AudioPlayer extends PureComponent {
 
   toggle = () => (this.state.playing ? this.pause() : this.play());
 
-  next = () => {
+  next = async () => {
     const { repeat, current, songs } = this.state;
     const total = songs.length;
     const newSongToPlay = repeat
       ? current
       : current < total - 1
         ? current + 1
-        : 0;
+        : 1;
     const active = songs[newSongToPlay];
 
     this.setState({
@@ -182,12 +167,14 @@ class AudioPlayer extends PureComponent {
       repeat: false,
     });
 
-    this.audio.src = this.getDecryptedMediaUrl(active.mediaId, this.userId);
-    this.play();
+    this.audio.src = await this.getDecryptedMediaUrl(active.mediaId, this.userId);
+    if (this.userAlreadyInteract){
+      this.play();
+    }
     this.props.onNext();
   };
 
-  previous = () => {
+  previous = async () => {
     const { current, songs } = this.state;
     const total = songs.length;
     const newSongToPlay = current > 0 ? current - 1 : total - 1;
@@ -199,7 +186,7 @@ class AudioPlayer extends PureComponent {
       progress: 0,
     });
 
-    this.audio.src = this.getDecryptedMediaUrl(active.mediaId, this.userId);
+    this.audio.src = await this.getDecryptedMediaUrl(active.mediaId, this.userId);
     this.play();
     this.props.onPrevious();
   };
@@ -240,29 +227,29 @@ class AudioPlayer extends PureComponent {
       repeat,
     } = this.state;
 
-    const coverClass = classnames({
+    const coverClass = classNames({
       'player-cover': true,
       'no-height': !!active.cover === false,
     });
 
-    const playPauseClass = classnames({
+    const playPauseClass = classNames({
       fa: true,
       'fa-play': !playing,
       'fa-pause': playing,
     });
 
-    const volumeClass = classnames({
+    const volumeClass = classNames({
       fa: true,
       'fa-volume-up': !mute,
       'fa-volume-off': mute,
     });
 
-    const randomClass = classnames({
+    const randomClass = classNames({
       'player-btn small random': true,
       active: random,
     });
 
-    const repeatClass = classnames({
+    const repeatClass = classNames({
       'player-btn small repeat': true,
       active: repeat,
     });
@@ -342,6 +329,54 @@ class AudioPlayer extends PureComponent {
         </div>
       </div>
     );
+  }
+
+  getDecryptedMediaUrl = async (mediaId, userId) => {
+    const bytesBuffer = await FetchUtil.fetchBytesOfStaticMedia(mediaId);
+    // console.log("Bytebuffer: ", mediaId, bytesBuffer);
+    const wrmHeader = ParserUtil.getWRMHeaderFromBuffer(bytesBuffer, 0, ParserUtil.WRMHEADER_BYTES_SIZE);
+    // console.log("WRMHeader: ", wrmHeader);
+    const keyId = ParserUtil.getKeyIdFromWRMHeader(wrmHeader);
+    // console.log("KeyId", keyId);
+    const laUrl = ParserUtil.getLaUrlFromWRMHeader(wrmHeader);
+    // console.log("LaUrl", laUrl);
+    const encryptedContent = ParserUtil.getEncryptedContentFromBuffer(bytesBuffer, ParserUtil.WRMHEADER_BYTES_SIZE, bytesBuffer.length);
+    // console.log("EncryptedContent", encryptedContent);
+    const usageLicense = await FetchUtil.fetchUsageLicense(laUrl, userId, keyId);
+    // console.log("UsageLicense", usageLicense);
+    if (usageLicense.data && usageLicense.data.item) {
+      this.bindingUsageLicense(usageLicense.data.item);
+      this.bindingMediaChorus(usageLicense.data.item);
+      // console.log(this.usageLicense);
+      const contentKey = usageLicense.data.item.contentKey;
+      // console.log("ContentKey", contentKey);
+      if (!contentKey) {
+        return "";
+      }
+      // Hash content key
+      const sha256HashContentKey = await HashUtil.sha256HashContentKey(contentKey);
+      // console.log("sha256", sha256HashContentKey);
+      const rawContentBytes = await DecryptUtil.decryptMediaContent(encryptedContent, sha256HashContentKey);
+      // console.log("mediaId", mediaId, rawContentBytes);
+      const mediaBlob = new Blob([rawContentBytes], { type: "audio/mpeg" });
+      const blobUrl = window.URL.createObjectURL(mediaBlob);
+
+      // console.log("blobUrl", blobUrl);
+      return blobUrl;
+    }
+    else {
+      return "";
+    }
+  }
+
+  bindingUsageLicense = usageLicenseDataItem => {
+    const { canPlayVip, canSeek, canSkipAds, listenChorusOnly } = usageLicenseDataItem;
+    this.usageLicense = { canPlayVip, canSeek, canSkipAds, listenChorusOnly };
+  }
+
+  bindingMediaChorus = usageLicenseDataItem => {
+    this.chorus.startChorus = usageLicenseDataItem["startChorus"];
+    this.chorus.endChorus = usageLicenseDataItem["endChorus"];
   }
 }
 
