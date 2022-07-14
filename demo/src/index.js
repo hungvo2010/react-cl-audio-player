@@ -129,14 +129,14 @@ ReactDOM.render(
     />
 
     <h1>CLAudioPlayer</h1>
-    <h2>
+    {/* <h2>
       <a href="https://github.com/hungvo2010/react-cl-audio-player">
         View project on GitHub
       </a>
-    </h2>
+    </h2> */}
     <AudioPlayer songs={songs} />
 
-    <div class="footer">Copyright &copy; 2018 Cezar Luiz.</div>
+    {/* <div class="footer">Copyright &copy; 2018 Cezar Luiz.</div> */}
   </div>,
   document.querySelector('#demo')
 );
