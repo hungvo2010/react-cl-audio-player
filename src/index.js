@@ -54,6 +54,10 @@ class AudioPlayer extends PureComponent {
     this.audio.preload = "auto";
 
     this.audio.addEventListener('timeupdate', e => {
+      if (this.usageLicense.listenChorusOnly === true && this.audio.currentTime > 0 && parseInt(this.audio.currentTime * 1000) > this.chorus.endChorus) {
+        this.pause();
+        return;
+      }
       this.updateProgress();
       props.onTimeUpdate(e);
     });
@@ -68,13 +72,16 @@ class AudioPlayer extends PureComponent {
     });
 
     this.audio.addEventListener('error', e => {
-      if (this.audio.src === window.location.href) {
-        this.pause();
-      }
-      else {
+      if (this.audio.src.endsWith("-1")) {
         this.next();
-        props.onError(e);
+        return;
       }
+      if (!this.audio.src.startsWith("blob")) {
+        this.pause();
+        return;
+      }
+      // this.next();
+      props.onError(e);
     });
 
     document.addEventListener('mousemove', event => {
@@ -132,7 +139,12 @@ class AudioPlayer extends PureComponent {
   };
 
   play = () => {
-    if (this.audio.src === window.location.href) {
+    console.log("audio src", this.audio.src);
+    if (!this.audio.src.startsWith("blob")) {
+      this.pause();
+      return;
+    }
+    if (this.usageLicense.listenChorusOnly && parseInt(this.audio.src.currentTime * 1000) > this.chorus.endChorus) {
       this.pause();
       return;
     }
@@ -173,8 +185,16 @@ class AudioPlayer extends PureComponent {
     });
 
     const decryptedMediaUrl = await this.getDecryptedMediaUrl(active.mediaId, this.userId);
-    if (decryptedMediaUrl !== ""){
-      this.audio.src = decryptedMediaUrl + "#t=" + this.chorus.startChorus / 1000 + "," + this.chorus.endChorus / 1000;
+    if (decryptedMediaUrl === "") {
+      this.audio.src = "";
+    }
+    else {
+      if (this.usageLicense.listenChorusOnly === true) {
+        this.audio.src = decryptedMediaUrl + "#t=" + this.chorus.startChorus / 1000 + "," + this.chorus.endChorus / 1000;
+      }
+      else {
+        this.audio.src = decryptedMediaUrl;
+      }
     }
     if (this.userAlreadyInteract) {
       this.play();
@@ -195,8 +215,16 @@ class AudioPlayer extends PureComponent {
     });
 
     const decryptedMediaUrl = await this.getDecryptedMediaUrl(active.mediaId, this.userId);
-    if (decryptedMediaUrl !== ""){
-      this.audio.src = decryptedMediaUrl + "#t=" + this.chorus.startChorus / 1000 + "," + this.chorus.endChorus / 1000;
+    if (decryptedMediaUrl === "") {
+      this.audio.src = "";
+    }
+    else {
+      if (this.usageLicense.listenChorusOnly === true) {
+        this.audio.src = decryptedMediaUrl + "#t=" + this.chorus.startChorus / 1000 + "," + this.chorus.endChorus / 1000;
+      }
+      else {
+        this.audio.src = decryptedMediaUrl;
+      }
     }
     this.play();
 
@@ -355,6 +383,7 @@ class AudioPlayer extends PureComponent {
       this.bindingMediaChorus(usageLicense.data.item);
       const contentKey = usageLicense.data.item.contentKey;
       if (!contentKey) {
+        // console.log("no content key", mediaId);
         return "";
       }
       // Hash content key
